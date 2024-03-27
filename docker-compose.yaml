@@ -1,0 +1,24 @@
+version: '3'
+services:
+  squeezelite:
+    container_name: squeezelite
+    restart: always
+    #image: ghcr.io/hifiberry/extension_squeezelite:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.squeezelite
+    devices:
+      - /dev/snd:/dev/snd
+    volumes:
+      - /etc/hifiberry.state:/etc/hifiberry.state
+      - /etc/squeezelite.json:/etc/squeezelite.json
+      - /var/squeezelite/squeezelite.name:/var/squeezelite/squeezelite.name
+      - /etc/asound.conf:/etc/asound.conf
+      - /run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1m"
+        max-file: "5"
+    group_add:
+      - 2001

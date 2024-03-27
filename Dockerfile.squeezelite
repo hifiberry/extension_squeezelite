@@ -1,0 +1,68 @@
+FROM alpine:latest AS builder
+
+# Install required build dependencies
+RUN apk update && apk add --no-cache \
+    build-base \
+    autoconf \
+    automake \
+    git \
+    cmake \
+    alsa-lib-dev \
+    libvorbis-dev \
+    opus-dev \
+    flac-dev \
+    soxr-dev \
+    pkgconf \
+    boost-dev \
+    alsa-lib-dev \
+    ffmpeg-dev \
+    alpine-sdk \
+    libmad-dev \ 
+    mpg123-dev
+
+# Download and extract libfaad source code
+WORKDIR /
+RUN wget https://github.com/knik0/faad2/archive/refs/tags/2.11.1.zip && \
+    unzip 2.11.1.zip && \
+    mv faad2-2.11.1 faad2
+
+# Build libfaad
+WORKDIR /faad2
+RUN cmake . && \
+    make && \
+    make install
+
+# Clone Snapcast repository and build it
+WORKDIR /
+RUN git clone https://github.com/ralph-irving/squeezelite squeezelite
+
+# Build Squeezelite
+WORKDIR /squeezelite
+COPY pause.patch pause.patch
+RUN patch -p1 < pause.patch && \
+    make OPTS="-DLINKALL -DDSD" all  && \
+    ls -lR
+
+# Final stage: create the minimal runtime container
+FROM alpine:latest
+
+RUN apk update && apk add --no-cache \
+      alsa-lib \
+      libmad \
+      mpg123 \
+      libvorbis \
+      flac && \
+    addgroup -S squeezelite && \
+    adduser -S -G squeezelite -u 2002 squeezelite
+
+# Copy built Snapcast binary from builder stage
+COPY --from=builder /squeezelite/squeezelite /usr/local/bin/squeezelite
+COPY --from=builder /faad2/libfaad.so.2 /usr/lib/libfaad.so.2
+
+COPY squeezelite-start squeezelite-start
+RUN chmod ugo+rx squeezelite-start
+
+# Run squeezelite
+CMD ["/squeezelite-start"]
+
+USER squeezelite
