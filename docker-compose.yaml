@@ -3,10 +3,10 @@ services:
   squeezelite:
     container_name: squeezelite
     restart: always
-    #image: ghcr.io/hifiberry/extension_squeezelite:latest
-    build:
-      context: .
-      dockerfile: Dockerfile.squeezelite
+    image: ghcr.io/hifiberry/extension_squeezelite:2.0.0
+    #build:
+    #  context: .
+    #  dockerfile: Dockerfile.squeezelite
     devices:
       - /dev/snd:/dev/snd
     volumes:
@@ -25,10 +25,9 @@ services:
       - 2001
 
   lmsmpris:
-    image: lmsmpris
-    #image: ghcr.io/hifiberry/extension_lmsmpris:0.1
-    build:
-      dockerfile: Dockerfile.lmsmpris
+    image: ghcr.io/hifiberry/extension_lmsmpris:0.1
+    #build:
+    #  dockerfile: Dockerfile.lmsmpris
     volumes:
       - /run/dbus/system_bus_socket:/run/dbus/system_bus_socket
       - /etc/squeezelite.json:/etc/squeezelite.json
