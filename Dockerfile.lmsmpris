@@ -1,0 +1,28 @@
+FROM alpine:latest
+
+# Set the working directory
+WORKDIR /app
+
+# Install runtime dependencies, D-Bus Python bindings, and glib/GObject support
+RUN apk update && \
+    apk add --no-cache python3 dbus dbus-glib py3-dbus git glib gobject-introspection py3-gobject3 py3-netifaces && \
+    # Clean up APK cache to reduce image size
+    rm -rf /var/cache/apk/*
+
+# Copy the project files into the container
+COPY . .
+
+# Instead of cloning, copy the lmsmpris directory from the build context
+COPY lmsmpris/ ./lmsmpris/
+
+# Add a user with the specified UID for running the application
+RUN adduser -D -u 2002 lmsmpris
+
+# Switch to the newly created user for subsequent commands
+USER lmsmpris
+
+ENV DBUS_SESSION_BUS_ADDRESS=unix:path=/run/dbus/system_bus_socket
+
+# Command to run the MPRIS interface
+CMD ["python3", "lmsmpris/lmsmpris.py"]
+
