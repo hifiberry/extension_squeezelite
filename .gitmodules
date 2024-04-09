@@ -1,0 +1,3 @@
+[submodule "lmsmpris"]
+	path = lmsmpris
+	url = https://github.com/hifiberry/lmsmpris
