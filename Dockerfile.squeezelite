@@ -38,10 +38,9 @@ RUN git clone https://github.com/ralph-irving/squeezelite squeezelite
 
 # Build Squeezelite
 WORKDIR /squeezelite
-COPY pause.patch pause.patch
+COPY docker/pause.patch pause.patch
 RUN patch -p1 < pause.patch && \
-    make OPTS="-DLINKALL -DDSD" all  && \
-    ls -lR
+    make OPTS="-DLINKALL -DDSD" all
 
 # Final stage: create the minimal runtime container
 FROM alpine:latest
@@ -51,15 +50,18 @@ RUN apk update && apk add --no-cache \
       libmad \
       mpg123 \
       libvorbis \
+      jq \
+      curl \
       flac && \
     addgroup -S squeezelite && \
-    adduser -S -G squeezelite -u 2002 squeezelite
+    adduser -S -G squeezelite -u 2002 squeezelite && \
+    mkdir /conf && \
+    chown squeezelite:squeezelite /conf 
 
 # Copy built Snapcast binary from builder stage
 COPY --from=builder /squeezelite/squeezelite /usr/local/bin/squeezelite
 COPY --from=builder /faad2/libfaad.so.2 /usr/lib/libfaad.so.2
-
-COPY squeezelite-start squeezelite-start
+COPY docker/squeezelite-start squeezelite-start
 RUN chmod ugo+rx squeezelite-start
 
 # Run squeezelite
