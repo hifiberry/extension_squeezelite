@@ -15,6 +15,7 @@ services:
       - /var/squeezelite/squeezelite.name:/var/squeezelite/squeezelite.name
       - /etc/asound.conf:/etc/asound.conf
       - /run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket
+    network_mode: "host"
     logging:
       driver: "json-file"
       options:
@@ -22,3 +23,18 @@ services:
         max-file: "5"
     group_add:
       - 2001
+
+  lmsmpris:
+    image: lmsmpris
+    #image: ghcr.io/hifiberry/extension_lmsmpris:0.1
+    build:
+      dockerfile: Dockerfile.lmsmpris
+    volumes:
+      - /run/dbus/system_bus_socket:/run/dbus/system_bus_socket
+      - /etc/squeezelite.json:/etc/squeezelite.json
+    network_mode: "host"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1m"
+        max-file: "5"
