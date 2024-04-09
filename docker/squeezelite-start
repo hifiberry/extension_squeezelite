@@ -1,12 +1,18 @@
 #!/bin/sh
 . /etc/hifiberry.state
 
-ARGS="-o default -M HiFiBerry -N /var/squeezelite/squeezelite.name -a 10240:10240:24_3:0 -C 1 -r 192000"
+echo $CURRENT_SYSNAME > /conf/sysname
+ARGS="-o default -M HiFiBerry -N /conf/sysname -a 10240:10240:24_3:0 -C 1 -r 192000"
+
+echo "Starting squeezelite"
 
 if [ -f /etc/squeezelite.json ]; then
  SERVER=`jq .server.value /etc/squeezelite.json | sed s/\"//g` 2>/dev/null
  if [ "$SERVER" != "" ]; then
+  echo "Server set to $SERVER"
   ARGS="$ARGS -s $SERVER"
+ else
+  echo "No server set"
  fi
 fi
 
