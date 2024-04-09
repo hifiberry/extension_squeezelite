@@ -1,21 +1,10 @@
-/*Copyright 2018 Bang & Olufsen A/S
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.*/
-
 // SQUEEZelite CONTROL FOR BEOCREATE
+
+const { updateAttribValueConfig, 
+	getExtensionStatus, 
+	setExtensionStatus,
+	restartExtension } = 
+require(global.beo.extensionDirectory+'/hbosextensions/utilities');
 
 var exec = require("child_process").exec;
 var fs = require("fs");
@@ -32,6 +21,8 @@ var settings = {
 
 var configuration = {};
 
+const hbosextensionName="squeezelite"
+const beosource="squeezelite"
 
 beo.bus.on('general', function(event) {
 	
@@ -44,29 +35,32 @@ beo.bus.on('general', function(event) {
 		}
 		
 		if (sources) {
-			getSqueezeliteStatus(function(enabled) {
-				sources.setSourceOptions("squeezelite", {
+			getExtensionStatus(hbosextensionName, function(enabled) {
+				sources.setSourceOptions(beosource, {
 					enabled: enabled,
 					aka: ["lms"],
 					transportControls: true,
 					usesHifiberryControl: true
 				});
+				settings.squeezeliteEnabled = enabled
 			});
+
 		}
 		
 		readSqueezeliteConfiguration();
+
 		if (configuration.server && configuration.server.value != "0.0.0.0") {
 			settings.serverAddress = configuration.server.value;
+
 		} else {
 			settings.serverAddress = null;
 		}
-
+		console.log("Server: "+settings.serverAddress)
 	}
 	
 	if (event.header == "activatedExtension") {
-		if (event.content.extension == "squeezelite") {
-			settings.squeezeliteEnabled = 
-			beo.bus.emit("ui", {target: "squeezelite", header: "squeezeliteSettings", content: settings});
+		if (event.content.extension == beosource) {
+			beo.bus.emit("ui", {target: beosource, header: "squeezeliteSettings", content: settings});
 		}
 	}
 	
@@ -75,42 +69,34 @@ beo.bus.on('general', function(event) {
 beo.bus.on('product-information', function(event) {
 	
 	if (event.header == "systemNameChanged") {
-		// Listen to changes in system name and update the shairport-sync display name.
-		if (event.content.systemName && fs.existsSync("/var/squeezelite/squeezelite.name")) {
-			fs.writeFileSync("/var/squeezelite/squeezelite.name", event.content.systemName);
-			if (debug) console.log("System name updated for Squeezelite.");
-			if (settings.squeezeliteEnabled) {
-				exec("systemctl restart squeezelite.service lmsmpris.service").on('exit', function(code) {
-					if (code == 0) {
-						// Success
-					} else {
-						
-					}
-				});
-			}
-		}
-		
+		restartExtension("")		
 	}
 });
 
-beo.bus.on('squeezelite', function(event) {
-	
+beo.bus.on(beosource, function(event) {
+
 	if (event.header == "squeezeliteEnabled") {
-		
-		if (event.content.enabled != undefined) {
-			setSqueezeliteStatus(event.content.enabled, function(newStatus, error) {
-				beo.bus.emit("ui", {target: "squeezelite", header: "squeezeliteSettings", content: {squeezeliteEnabled: newStatus}});
-				if (sources) sources.setSourceOptions("squeezelite", {enabled: newStatus});
-				if (newStatus == false) {
-					if (sources) sources.sourceDeactivated("squeezelite");
-				}
-				if (error) {
-					beo.bus.emit("ui", {target: "squeezelite", header: "errorTogglingsqueezelite", content: {}});
-				}
-			});
-		}
+		if (event.content.enabled !== undefined) {
+		  setExtensionStatus(hbosextensionName, event.content.enabled, function(newStatus, error) {
+			// Emit updated settings to UI
+			beo.bus.emit("ui", {target: beosource, header: "squeezeliteSettings", content: {"squeezeliteEnabled": event.content.enabled}});
 	
-	}
+			// Update source options based on new status
+			if (sources) sources.setSourceOptions(beosource, {enabled: event.content.enabled});
+	
+			// Handle deactivation
+			if (event.content.enabled === false) {
+			  if (sources) sources.sourceDeactivated(beosource);
+			}
+	
+			// Handle errors
+			if (error) {
+			  beo.bus.emit("ui", {target: beosource, header: "errorTogglingSqueezelite", content: {}});
+			}
+		  });
+		}
+	  }
+
 	
 	if (event.header == "setServerAddress") {
 		
@@ -118,56 +104,18 @@ beo.bus.on('squeezelite', function(event) {
 			settings.serverAddress = event.content.address;
 			relaunch = settings.squeezeliteEnabled;
 			configureSqueezelite([{option: "server", value: settings.serverAddress}], relaunch, function(success) {
-				beo.bus.emit("ui", {target: "squeezelite", header: "squeezeliteSettings", content: settings});
+				beo.bus.emit("ui", {target: beosource, header: "squeezeliteSettings", content: settings});
 			});
 		} else {
 			settings.serverAddress = null;
 			relaunch = settings.squeezeliteEnabled;
 			configureSqueezelite([{option: "server", remove: true}], relaunch, function(success) {
-				beo.bus.emit("ui", {target: "squeezelite", header: "squeezeliteSettings", content: settings});
+				beo.bus.emit("ui", {target: beosource, header: "squeezeliteSettings", content: settings});
 			});
 		}
 	
 	}
 });
-
-
-function getSqueezeliteStatus(callback) {
-	exec("systemctl is-active --quiet squeezelite.service lmsmpris.service").on('exit', function(code) {
-		if (code == 0) {
-			settings.squeezeliteEnabled = true;
-			callback(true);
-		} else {
-			settings.squeezeliteEnabled = false;
-			callback(false);
-		}
-	});
-}
-
-function setSqueezeliteStatus(enabled, callback) {
-	if (enabled) {
-		exec("systemctl enable --now squeezelite.service lmsmpris.service").on('exit', function(code) {
-			if (code == 0) {
-				settings.squeezeliteEnabled = true;
-				if (debug) console.log("Squeezelite enabled.");
-				callback(true);
-			} else {
-				settings.squeezeliteEnabled = false;
-				callback(false, true);
-			}
-		});
-	} else {
-		exec("systemctl disable --now squeezelite.service lmsmpris.service").on('exit', function(code) {
-			settings.squeezeliteEnabled = false;
-			if (code == 0) {
-				callback(false);
-				if (debug) console.log("Squeezelite disabled.");
-			} else {
-				callback(false, true);
-			}
-		});
-	}
-}
 
 
 function configureSqueezelite(options, relaunch, callback) {
@@ -195,15 +143,16 @@ function configureSqueezelite(options, relaunch, callback) {
 	}
 	writeSqueezeliteConfiguration();
 	if (relaunch) {
-		exec("systemctl restart squeezelite.service", function(error, stdout, stderr) {
+		restartExtension(hbosextensionName, (success, error) => {
 			if (error) {
-				if (debug) console.error("Relaunching squeezelite failed: "+error);
-				if (callback) callback(false, error);
-			} else {
-				if (debug) console.error("squeezelite was relaunched.");
-				if (callback) callback(true);
+			  console.error("Failed to restart the service:", error);
+			  beo.bus.emit("ui", { target: "shairport-sync", header: "serviceRestartError" });
+			  return; // Exit if unable to restart the service
 			}
-		});
+
+			console.log("Service restarted successfully.");
+			if (callback) callback(true);
+		  });	
 	} else {
 		if (callback) callback(true);
 	}
@@ -219,22 +168,30 @@ function writeSqueezeliteConfiguration() {
 
 
 function readSqueezeliteConfiguration() {
-	configuration={}
-	if (fs.existsSync("/etc/squeezelite.json")) {
-		modified = fs.statSync("/etc/squeezelite.json").mtimeMs;
-		if (modified != squeezeliteConfigModified) {
-			// Reads configuration into a JavaScript object for easy access.
-			squeezeliteConfigModified = modified;
-			squeezeliteConfig = fs.readFileSync("/etc/squeezelite.json", "utf8").split('\n');
-			configuration = JSON.parse(squeezeliteConfig)
-		}
-	}
-	return configuration;
+    const configFile = "/etc/squeezelite.json";
+
+    try {
+        if (fs.existsSync(configFile)) {
+            const modified = fs.statSync(configFile).mtimeMs;
+            if (modified !== squeezeliteConfigModified) {
+                // Update the last modified time
+                squeezeliteConfigModified = modified;
+                
+                // Read and parse configuration file
+                const squeezeliteConfig = fs.readFileSync(configFile, "utf8");
+                configuration = JSON.parse(squeezeliteConfig);
+            }
+        }
+    } catch (error) {
+        // Log the error to console or handle it as needed
+        console.error("Error reading or parsing the Squeezelite configuration:", error);
+        // Depending on your needs, you may choose to return an empty configuration,
+        // the last known good configuration, or even re-throw the error.
+    }
 }
 
 	
 module.exports = {
-	version: version,
-	isEnabled: getSqueezeliteStatus
+	version: version
 };
 
