@@ -143,8 +143,8 @@ function configureSqueezelite(options, relaunch, callback) {
 	}
 	writeSqueezeliteConfiguration();
 	if (relaunch) {
-		restartExtension(hbosextensionName, (success, error) => {
-			if (error) {
+		restartExtension(hbosextensionName, (success) => {
+			if (! success) {
 			  console.error("Failed to restart the service:", error);
 			  beo.bus.emit("ui", { target: "shairport-sync", header: "serviceRestartError" });
 			  return; // Exit if unable to restart the service
