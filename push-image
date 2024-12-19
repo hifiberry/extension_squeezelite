@@ -1,5 +1,6 @@
 #!/bin/sh
-IMAGEID=$1
-docker tag $IMAGEID ghcr.io/hifiberry/extension_squeezelite:latest
-docker push ghcr.io/hifiberry/extension_squeezelite:latest
-
+VERSION=`cat version`
+docker tag lmsmpris:$VERSION ghcr.io/hifiberry/extension_squeezelite_lmsmpris:$VERSION
+docker push ghcr.io/hifiberry/extension_squeezelite_lmsmpris:$VERSION
+docker tag squeezelite:$VERSION ghcr.io/hifiberry/extension_squeezelite_squeezelite:$VERSION
+docker push ghcr.io/hifiberry/extension_squeezelite_squeezelite:$VERSION
