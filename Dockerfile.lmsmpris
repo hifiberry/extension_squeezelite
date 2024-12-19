@@ -15,6 +15,9 @@ COPY . .
 # Instead of cloning, copy the lmsmpris directory from the build context
 COPY lmsmpris/ ./lmsmpris/
 
+RUN pwd
+RUN ls -l lmsmpris
+
 # Add a user with the specified UID for running the application
 RUN adduser -D -u 2002 lmsmpris
 

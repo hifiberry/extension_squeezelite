@@ -52,6 +52,9 @@ RUN apk update && apk add --no-cache \
       libvorbis \
       jq \
       curl \
+      pipewire-libs \
+      pipewire-alsa \
+      sox \
       flac && \
     addgroup -S squeezelite && \
     adduser -S -G squeezelite -u 2002 squeezelite && \

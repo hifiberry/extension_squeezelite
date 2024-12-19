@@ -1,4 +1,6 @@
 #!/bin/sh
+VERSION=`cat version`
 docker system prune -a
-docker build -t queezelite .
+docker build -t squeezelite:$VERSION -f Dockerfile.squeezelite .
+docker build -t lmsmpris:$VERSION -f Dockerfile.lmsmpris .
 
